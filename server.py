@@ -77,8 +77,8 @@ def query_table(
     return result.data
 
 
-_no_dns_protection = TransportSecuritySettings(enable_dns_rebinding_protection=False)
-app = BearerAuthMiddleware(mcp.sse_app(transport_security=_no_dns_protection))
+mcp.settings.transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+app = BearerAuthMiddleware(mcp.sse_app())
 
 if __name__ == "__main__":
     mcp.run()
