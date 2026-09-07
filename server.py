@@ -5,17 +5,26 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 from supabase import create_client, Client
-from supabase.lib.client_options import ClientOptions
 
 load_dotenv()
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 
-# Force HTTP/1.1 to avoid StreamReset issues with HTTP/2 in some cloud environments
-http_client = httpx.Client(http2=False, timeout=30.0)
-options = ClientOptions(httpx_client=http_client)
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY, options=options)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Replace the postgrest httpx session with one that forces HTTP/1.1
+# to avoid StreamReset errors (h2 PROTOCOL_ERROR) in some cloud environments
+try:
+    _old = supabase.postgrest.session
+    supabase.postgrest.session = httpx.Client(
+        base_url=str(_old.base_url),
+        headers=dict(_old.headers),
+        http2=False,
+        timeout=30.0,
+    )
+except Exception:
+    pass
 
 mcp = FastMCP("ara virtual coo")
 
@@ -32,19 +41,23 @@ def diagnostico() -> dict:
     except Exception as e:
         dns_error = str(e)
 
-    http2_test = ""
+    http_test = ""
     try:
-        r = httpx.get(f"{SUPABASE_URL}/rest/v1/", headers={"apikey": SUPABASE_KEY}, timeout=10)
-        http2_test = f"HTTP {r.status_code}"
+        r = httpx.get(
+            f"{SUPABASE_URL}/rest/v1/",
+            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
+            timeout=10,
+        )
+        http_test = f"HTTP {r.status_code}"
     except Exception as e:
-        http2_test = f"Error: {e}"
+        http_test = f"Error: {e}"
 
     return {
         "supabase_url": SUPABASE_URL,
         "supabase_key_prefix": SUPABASE_KEY[:20],
         "dns_resolved": dns_ok,
         "dns_error": dns_error,
-        "http_test": http2_test,
+        "http_test": http_test,
     }
 
 
