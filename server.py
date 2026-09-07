@@ -13,7 +13,7 @@ MCP_AUTH_TOKEN = os.environ["MCP_AUTH_TOKEN"]
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-mcp = FastMCP("supabase-reader")
+mcp = FastMCP("ara virtual coo")
 
 
 class BearerAuthMiddleware(BaseHTTPMiddleware):
