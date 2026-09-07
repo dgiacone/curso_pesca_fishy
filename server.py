@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from supabase import create_client, Client
 
 load_dotenv()
@@ -76,7 +77,8 @@ def query_table(
     return result.data
 
 
-app = BearerAuthMiddleware(mcp.sse_app(host="0.0.0.0"))
+_no_dns_protection = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+app = BearerAuthMiddleware(mcp.sse_app(transport_security=_no_dns_protection))
 
 if __name__ == "__main__":
     mcp.run()
