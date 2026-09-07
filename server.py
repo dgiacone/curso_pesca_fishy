@@ -118,6 +118,35 @@ def monthly_summary(org_name: str) -> list[dict]:
 
 
 @mcp.tool()
+def opi_vri(org_name: str, months: list[str] | None = None) -> list[dict]:
+    """Snapshot mensual de OPI/VRI: revenue, costo, margen (total y %), minutos, llamadas,
+    filled y fulfillment %, agrupado por mes y modalidad.
+
+    Columnas: organization_name, period_month, modality, revenue, cost, total_margin,
+    total_margin_pct, minutes, calls, filled, fulfillment_pct.
+
+    Args:
+        org_name: Nombre de la organización (parcial o completo).
+        months: Lista opcional de meses en formato YYYY-MM-DD (ej. ['2026-01-01', '2026-02-01']).
+                Si no se indica, devuelve todos los meses disponibles.
+    """
+    query = (
+        supabase.table("v_opi_vri_monthly_snapshot")
+        .select("*")
+        .ilike("organization_name", f"%{org_name}%")
+        .order("period_month", desc=True)
+        .order("modality")
+    )
+    if months:
+        query = query.in_("period_month", months)
+
+    result = query.execute()
+    if not result.data:
+        return [{"error": f"No se encontraron datos para la organización '{org_name}'"}]
+    return result.data
+
+
+@mcp.tool()
 def list_tables() -> list[dict]:
     """Lista todas las tablas disponibles en la base de datos de Supabase."""
     result = supabase.rpc("get_tables_info", {}).execute()
