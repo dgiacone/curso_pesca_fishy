@@ -8,27 +8,10 @@ load_dotenv()
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
-MCP_AUTH_TOKEN = os.environ["MCP_AUTH_TOKEN"]
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 mcp = FastMCP("ara virtual coo")
-
-
-class BearerAuthMiddleware:
-    def __init__(self, app):
-        self.app = app
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] == "http":
-            headers = dict(scope.get("headers", []))
-            auth = headers.get(b"authorization", b"").decode()
-            if auth != f"Bearer {MCP_AUTH_TOKEN}":
-                body = b'{"error": "Unauthorized"}'
-                await send({"type": "http.response.start", "status": 401, "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())]})
-                await send({"type": "http.response.body", "body": body})
-                return
-        await self.app(scope, receive, send)
 
 
 @mcp.tool()
@@ -78,7 +61,7 @@ def query_table(
 
 
 mcp.settings.transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
-app = BearerAuthMiddleware(mcp.sse_app())
+app = mcp.sse_app()
 
 if __name__ == "__main__":
     mcp.run()
