@@ -62,6 +62,62 @@ def diagnostico() -> dict:
 
 
 @mcp.tool()
+def list_organizations_names() -> list[dict]:
+    """Lista los nombres e IDs de todas las organizaciones disponibles."""
+    result = supabase.table("organizations").select("id, name").order("name").execute()
+    return result.data
+
+
+@mcp.tool()
+def monthly_summary(org_name: str) -> list[dict]:
+    """Devuelve el resumen mensual de business units para una organización.
+
+    Retorna datos del mes actual y del mes de hace 3 meses.
+
+    Args:
+        org_name: Nombre de la organización (parcial o completo).
+    """
+    org_result = (
+        supabase.table("organizations")
+        .select("id, name")
+        .ilike("name", f"%{org_name}%")
+        .limit(1)
+        .execute()
+    )
+    if not org_result.data:
+        return [{"error": f"No se encontró ninguna organización con el nombre '{org_name}'"}]
+
+    org = org_result.data[0]
+    org_id = org["id"]
+
+    from datetime import date
+
+    today = date.today()
+
+    def month_offset(n: int) -> str:
+        m = today.month - n
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        return f"{y:04d}-{m:02d}"
+
+    current_month = month_offset(0)
+    three_months_ago = month_offset(3)
+
+    result = (
+        supabase.table("bu_monthly_summary_v")
+        .select("*")
+        .eq("org_id", org_id)
+        .in_("month", [current_month, three_months_ago])
+        .order("business_unit")
+        .order("month")
+        .execute()
+    )
+    return [{"org_id": org_id, "org_name": org["name"]}] + result.data
+
+
+@mcp.tool()
 def list_tables() -> list[dict]:
     """Lista todas las tablas disponibles en la base de datos de Supabase."""
     result = supabase.rpc("get_tables_info", {}).execute()
