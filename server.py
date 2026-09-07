@@ -1,4 +1,5 @@
 import os
+import socket
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
@@ -12,6 +13,25 @@ SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 mcp = FastMCP("ara virtual coo")
+
+
+@mcp.tool()
+def diagnostico() -> dict:
+    """Verifica la configuración y conectividad del servidor."""
+    hostname = SUPABASE_URL.replace("https://", "").split("/")[0]
+    dns_ok = False
+    dns_error = ""
+    try:
+        socket.getaddrinfo(hostname, 443)
+        dns_ok = True
+    except Exception as e:
+        dns_error = str(e)
+    return {
+        "supabase_url": SUPABASE_URL,
+        "supabase_key_set": bool(SUPABASE_KEY),
+        "dns_resolved": dns_ok,
+        "dns_error": dns_error,
+    }
 
 
 @mcp.tool()
