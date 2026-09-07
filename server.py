@@ -1,6 +1,14 @@
+import sys
+
+# Reorder sys.path so uv-installed packages (site-packages) take priority
+# over Vercel's bundled _vendor packages (which include mcp v2)
+_non_vendor = [p for p in sys.path if "_vendor" not in p]
+_vendor = [p for p in sys.path if "_vendor" in p]
+sys.path = _non_vendor + _vendor
+
 import os
 from dotenv import load_dotenv
-from mcp.server.mcpserver import MCPServer
+from mcp.server.fastmcp import FastMCP
 from supabase import create_client, Client
 
 load_dotenv()
@@ -11,7 +19,7 @@ MCP_AUTH_TOKEN = os.environ["MCP_AUTH_TOKEN"]
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-mcp = MCPServer("ara virtual coo")
+mcp = FastMCP("ara virtual coo")
 
 
 class BearerAuthMiddleware:
@@ -33,10 +41,7 @@ class BearerAuthMiddleware:
 @mcp.tool()
 def list_tables() -> list[dict]:
     """Lista todas las tablas disponibles en la base de datos de Supabase."""
-    result = supabase.rpc(
-        "get_tables_info",
-        {},
-    ).execute()
+    result = supabase.rpc("get_tables_info", {}).execute()
     return result.data
 
 
@@ -47,10 +52,7 @@ def get_schema(table_name: str) -> list[dict]:
     Args:
         table_name: Nombre de la tabla a inspeccionar.
     """
-    result = supabase.rpc(
-        "get_table_schema",
-        {"p_table_name": table_name},
-    ).execute()
+    result = supabase.rpc("get_table_schema", {"p_table_name": table_name}).execute()
     return result.data
 
 
@@ -62,7 +64,7 @@ def query_table(
     limit: int = 100,
     offset: int = 0,
 ) -> list[dict]:
-    """Ejecuta un SELECT en una tabla de Supabase y devuelve los resultados.xx
+    """Ejecuta un SELECT en una tabla de Supabase y devuelve los resultados.
 
     Args:
         table_name: Nombre de la tabla a consultar.
@@ -82,7 +84,7 @@ def query_table(
     return result.data
 
 
-# ASGI app exposed for deployment platforms (Vercel, Railway, etc.)
+# ASGI app exposed for Vercel
 app = BearerAuthMiddleware(mcp.sse_app())
 
 if __name__ == "__main__":
