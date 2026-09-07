@@ -2,8 +2,6 @@ import os
 from dotenv import load_dotenv
 from mcp.server.mcpserver import MCPServer
 from supabase import create_client, Client
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
 
 load_dotenv()
 
@@ -16,12 +14,20 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 mcp = MCPServer("ara virtual coo")
 
 
-class BearerAuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        auth = request.headers.get("Authorization", "")
-        if auth != f"Bearer {MCP_AUTH_TOKEN}":
-            return JSONResponse({"error": "Unauthorized"}, status_code=401)
-        return await call_next(request)
+class BearerAuthMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            headers = dict(scope.get("headers", []))
+            auth = headers.get(b"authorization", b"").decode()
+            if auth != f"Bearer {MCP_AUTH_TOKEN}":
+                body = b'{"error": "Unauthorized"}'
+                await send({"type": "http.response.start", "status": 401, "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())]})
+                await send({"type": "http.response.body", "body": body})
+                return
+        await self.app(scope, receive, send)
 
 
 @mcp.tool()
@@ -77,8 +83,7 @@ def query_table(
 
 
 # ASGI app exposed for deployment platforms (Vercel, Railway, etc.)
-app = mcp.sse_app()
-app.add_middleware(BearerAuthMiddleware)
+app = BearerAuthMiddleware(mcp.sse_app())
 
 if __name__ == "__main__":
     mcp.run()
