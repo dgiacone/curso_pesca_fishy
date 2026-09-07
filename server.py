@@ -64,7 +64,7 @@ def diagnostico() -> dict:
 @mcp.tool()
 def list_organizations_names() -> list[dict]:
     """Lista los nombres e IDs de todas las organizaciones disponibles."""
-    result = supabase.table("organizations").select("id, name").order("name").execute()
+    result = supabase.table("organizations").select("*").order("name").execute()
     return result.data
 
 
