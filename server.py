@@ -1,11 +1,3 @@
-import sys
-
-# Reorder sys.path so uv-installed packages (site-packages) take priority
-# over Vercel's bundled _vendor packages (which include mcp v2)
-_non_vendor = [p for p in sys.path if "_vendor" not in p]
-_vendor = [p for p in sys.path if "_vendor" in p]
-sys.path = _non_vendor + _vendor
-
 import os
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
@@ -84,7 +76,6 @@ def query_table(
     return result.data
 
 
-# ASGI app exposed for Vercel
 app = BearerAuthMiddleware(mcp.sse_app())
 
 if __name__ == "__main__":
