@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from supabase import create_client, Client
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -13,7 +13,7 @@ MCP_AUTH_TOKEN = os.environ["MCP_AUTH_TOKEN"]
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-mcp = FastMCP("ara virtual coo")
+mcp = MCPServer("ara virtual coo")
 
 
 class BearerAuthMiddleware(BaseHTTPMiddleware):
