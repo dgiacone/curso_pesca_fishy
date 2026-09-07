@@ -76,7 +76,7 @@ def query_table(
     return result.data
 
 
-app = BearerAuthMiddleware(mcp.sse_app())
+app = BearerAuthMiddleware(mcp.sse_app(host="0.0.0.0"))
 
 if __name__ == "__main__":
     mcp.run()
