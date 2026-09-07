@@ -2,15 +2,26 @@ import os
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from supabase import create_client, Client
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 load_dotenv()
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+MCP_AUTH_TOKEN = os.environ["MCP_AUTH_TOKEN"]
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 mcp = FastMCP("supabase-reader")
+
+
+class BearerAuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        auth = request.headers.get("Authorization", "")
+        if auth != f"Bearer {MCP_AUTH_TOKEN}":
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return await call_next(request)
 
 
 @mcp.tool()
@@ -67,6 +78,7 @@ def query_table(
 
 # ASGI app exposed for deployment platforms (Vercel, Railway, etc.)
 app = mcp.sse_app()
+app.add_middleware(BearerAuthMiddleware)
 
 if __name__ == "__main__":
     mcp.run()
