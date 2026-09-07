@@ -65,5 +65,8 @@ def query_table(
     return result.data
 
 
+# ASGI app exposed for deployment platforms (Vercel, Railway, etc.)
+app = mcp.sse_app()
+
 if __name__ == "__main__":
     mcp.run()
