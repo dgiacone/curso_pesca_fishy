@@ -56,7 +56,7 @@ def query_table(
     limit: int = 100,
     offset: int = 0,
 ) -> list[dict]:
-    """Ejecuta un SELECT en una tabla de Supabase y devuelve los resultados.
+    """Ejecuta un SELECT en una tabla de Supabase y devuelve los resultados.xx
 
     Args:
         table_name: Nombre de la tabla a consultar.
