@@ -62,7 +62,7 @@ def get_schema(table_name: str) -> list[dict]:
 
 
 mcp.settings.transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
-app = mcp.sse_app()
+app = mcp.streamable_http_app()
 
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport="streamable-http")
