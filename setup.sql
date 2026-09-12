@@ -14,6 +14,7 @@ set search_path = public
 as $$
     select
         t.table_name::text,
+        
         t.table_schema::text,
         t.table_type::text,
         coalesce(s.n_live_tup, 0)::bigint as row_count

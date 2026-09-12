@@ -1,5 +1,4 @@
 import os
-import socket
 import httpx
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
@@ -26,124 +25,22 @@ try:
 except Exception:
     pass
 
-mcp = FastMCP("ara virtual coo")
+mcp = FastMCP("curso pesca fishy")
 
 
 @mcp.tool()
-def diagnostico() -> dict:
-    """Verifica la configuración y conectividad del servidor."""
-    hostname = SUPABASE_URL.replace("https://", "").split("/")[0]
-    dns_ok = False
-    dns_error = ""
-    try:
-        socket.getaddrinfo(hostname, 443)
-        dns_ok = True
-    except Exception as e:
-        dns_error = str(e)
-
-    http_test = ""
-    try:
-        r = httpx.get(
-            f"{SUPABASE_URL}/rest/v1/",
-            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"},
-            timeout=10,
-        )
-        http_test = f"HTTP {r.status_code}"
-    except Exception as e:
-        http_test = f"Error: {e}"
-
-    return {
-        "supabase_url": SUPABASE_URL,
-        "supabase_key_prefix": SUPABASE_KEY[:20],
-        "dns_resolved": dns_ok,
-        "dns_error": dns_error,
-        "http_test": http_test,
-    }
-
-
-@mcp.tool()
-def list_organizations_names() -> list[dict]:
-    """Lista los nombres e IDs de todas las organizaciones disponibles."""
-    result = supabase.table("organizations").select("*").order("name").execute()
-    return result.data
-
-
-@mcp.tool()
-def monthly_summary(org_name: str) -> list[dict]:
-    """Devuelve el resumen mensual de business units para una organización.
-
-    Retorna datos del mes actual y del mes de hace 3 meses.
+def list_embarcaciones(solo_activas: bool = True) -> list[dict]:
+    """Lista las embarcaciones registradas.
 
     Args:
-        org_name: Nombre de la organización (parcial o completo).
+        solo_activas: Si es True (por defecto), devuelve solo las embarcaciones activas.
     """
-    org_result = (
-        supabase.table("organizations")
-        .select("id, name")
-        .ilike("name", f"%{org_name}%")
-        .limit(1)
-        .execute()
-    )
-    if not org_result.data:
-        return [{"error": f"No se encontró ninguna organización con el nombre '{org_name}'"}]
-
-    org = org_result.data[0]
-    org_id = org["id"]
-
-    from datetime import date
-
-    today = date.today()
-
-    def month_offset(n: int) -> str:
-        m = today.month - n
-        y = today.year
-        while m <= 0:
-            m += 12
-            y -= 1
-        return f"{y:04d}-{m:02d}"
-
-    current_month = month_offset(0)
-    three_months_ago = month_offset(3)
-
-    result = (
-        supabase.table("bu_monthly_summary_v")
-        .select("*")
-        .eq("org_id", org_id)
-        .in_("month", [current_month, three_months_ago])
-        .order("business_unit")
-        .order("month")
-        .execute()
-    )
-    return [{"org_id": org_id, "org_name": org["name"]}] + result.data
-
-
-@mcp.tool()
-def opi_vri(org_name: str, months: list[str] | None = None) -> list[dict]:
-    """Snapshot mensual de OPI/VRI: revenue, costo, margen (total y %), minutos, llamadas,
-    filled y fulfillment %, agrupado por mes y modalidad.
-
-    Columnas: organization_name, period_month, modality, revenue, cost, total_margin,
-    total_margin_pct, minutes, calls, filled, fulfillment_pct.
-
-    Args:
-        org_name: Nombre de la organización (parcial o completo).
-        months: Lista opcional de meses en formato YYYY-MM-DD (ej. ['2026-01-01', '2026-02-01']).
-                Si no se indica, devuelve todos los meses disponibles.
-    """
-    query = (
-        supabase.table("v_opi_vri_monthly_snapshot")
-        .select("*")
-        .ilike("organization_name", f"%{org_name}%")
-        .order("period_month", desc=True)
-        .order("modality")
-    )
-    if months:
-        query = query.in_("period_month", months)
-
-    result = query.execute()
-    if not result.data:
-        return [{"error": f"No se encontraron datos para la organización '{org_name}'"}]
-    return result.data
+    query = supabase.table("embarcaciones").select(
+        "matricula, nombre, patron_habitual, eslora_m, capacidad_bodega_kg, tipo_flota, activa"
+    ).order("nombre")
+    if solo_activas:
+        query = query.eq("activa", True)
+    return query.execute().data
 
 
 @mcp.tool()
@@ -161,34 +58,6 @@ def get_schema(table_name: str) -> list[dict]:
         table_name: Nombre de la tabla a inspeccionar.
     """
     result = supabase.rpc("get_table_schema", {"p_table_name": table_name}).execute()
-    return result.data
-
-
-@mcp.tool()
-def query_table(
-    table_name: str,
-    columns: str = "*",
-    filters: dict | None = None,
-    limit: int = 100,
-    offset: int = 0,
-) -> list[dict]:
-    """Ejecuta un SELECT en una tabla de Supabase y devuelve los resultados.
-
-    Args:
-        table_name: Nombre de la tabla a consultar.
-        columns: Columnas a seleccionar, separadas por coma (por defecto todas).
-        filters: Diccionario de filtros {columna: valor} aplicados como igualdad exacta.
-        limit: Cantidad máxima de filas a retornar (máximo 1000).
-        offset: Cantidad de filas a saltar (paginación).
-    """
-    limit = min(limit, 1000)
-    query = supabase.table(table_name).select(columns).range(offset, offset + limit - 1)
-
-    if filters:
-        for column, value in filters.items():
-            query = query.eq(column, value)
-
-    result = query.execute()
     return result.data
 
 
