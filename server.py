@@ -63,8 +63,8 @@ def get_schema(table_name: str) -> list[dict]:
 
 
 GEMINI_EMBED_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "text-embedding-004:embedContent?key={key}"
+    "https://generativelanguage.googleapis.com/v1/models/"
+    "gemini-embedding-001:embedContent?key={key}"
 )
 
 _NO_RESULTS = "No se encontraron resultados para esos filtros."
@@ -270,7 +270,7 @@ def buscar_conocimiento(query: str, match_count: int = 5) -> list[dict] | str:
         embed_resp = httpx.post(
             GEMINI_EMBED_URL.format(key=GEMINI_API_KEY),
             json={
-                "model": "models/text-embedding-004",
+                "model": "models/gemini-embedding-001",
                 "content": {"parts": [{"text": query}]},
             },
             timeout=15.0,
@@ -279,7 +279,7 @@ def buscar_conocimiento(query: str, match_count: int = 5) -> list[dict] | str:
         embedding = embed_resp.json()["embedding"]["values"]
 
         data = supabase.rpc(
-            "match_documentos",
+            "match_documents",
             {"query_embedding": embedding, "match_count": match_count},
         ).execute().data
         return data or _NO_RESULTS
