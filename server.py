@@ -256,6 +256,24 @@ def get_capturas_recientes(dias: int = 7) -> list[dict] | str:
 
 
 @mcp.tool()
+def list_documentos() -> list[dict] | str:
+    """Lista los documentos cargados en la base vectorial: nombre, tipo, quién lo subió y fecha.
+    Usar para saber qué documentos están disponibles antes de hacer una búsqueda semántica.
+    """
+    try:
+        data = (
+            supabase.table("documentos")
+            .select("nombre_archivo, tipo, subido_por, created_at")
+            .order("created_at", desc=True)
+            .execute()
+            .data
+        )
+        return data or _NO_RESULTS
+    except Exception as e:
+        return _db_error(e)
+
+
+@mcp.tool()
 def buscar_conocimiento(query: str, match_count: int = 5) -> list[dict] | str:
     """Busca en la base de conocimiento documentos relevantes usando similitud semántica.
     Embedea la consulta con Gemini text-embedding-004 y llama al RPC match_documentos
