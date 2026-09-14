@@ -256,6 +256,39 @@ def get_capturas_recientes(dias: int = 7) -> list[dict] | str:
 
 
 @mcp.tool()
+def query_table(
+    table_name: str,
+    columns: str = "*",
+    filters: dict | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[dict] | str:
+    """Ejecuta un SELECT genérico sobre cualquier tabla o vista de la base de datos.
+
+    Args:
+        table_name: Nombre de la tabla o vista a consultar.
+        columns: Columnas a seleccionar separadas por coma (default '*').
+        filters: Filtros de igualdad exacta como dict {columna: valor}.
+        limit: Máximo de filas a retornar (default 100, máximo 1000).
+        offset: Filas a saltar para paginación (default 0).
+    """
+    try:
+        limit = min(limit, 1000)
+        query = (
+            supabase.table(table_name)
+            .select(columns)
+            .range(offset, offset + limit - 1)
+        )
+        if filters:
+            for col, val in filters.items():
+                query = query.eq(col, val)
+        data = query.execute().data
+        return data or _NO_RESULTS
+    except Exception as e:
+        return _db_error(e)
+
+
+@mcp.tool()
 def list_documentos() -> list[dict] | str:
     """Lista los documentos cargados en la base vectorial: nombre, tipo, quién lo subió y fecha.
     Usar para saber qué documentos están disponibles antes de hacer una búsqueda semántica.
