@@ -9,6 +9,7 @@ load_dotenv()
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -60,6 +61,11 @@ def get_schema(table_name: str) -> list[dict]:
     result = supabase.rpc("get_table_schema", {"p_table_name": table_name}).execute()
     return result.data
 
+
+GEMINI_EMBED_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    "text-embedding-004:embedContent?key={key}"
+)
 
 _NO_RESULTS = "No se encontraron resultados para esos filtros."
 
@@ -244,6 +250,38 @@ def get_capturas_recientes(dias: int = 7) -> list[dict] | str:
             .execute()
             .data
         )
+        return data or _NO_RESULTS
+    except Exception as e:
+        return _db_error(e)
+
+
+@mcp.tool()
+def buscar_conocimiento(query: str, match_count: int = 5) -> list[dict] | str:
+    """Busca en la base de conocimiento documentos relevantes usando similitud semántica.
+    Embedea la consulta con Gemini text-embedding-004 y llama al RPC match_documentos
+    en Supabase. Usar para preguntas sobre reglamentos, procedimientos o cualquier
+    contenido cargado como documento.
+
+    Args:
+        query: Pregunta o texto a buscar.
+        match_count: Cantidad máxima de resultados (default 5).
+    """
+    try:
+        embed_resp = httpx.post(
+            GEMINI_EMBED_URL.format(key=GEMINI_API_KEY),
+            json={
+                "model": "models/text-embedding-004",
+                "content": {"parts": [{"text": query}]},
+            },
+            timeout=15.0,
+        )
+        embed_resp.raise_for_status()
+        embedding = embed_resp.json()["embedding"]["values"]
+
+        data = supabase.rpc(
+            "match_documentos",
+            {"query_embedding": embedding, "match_count": match_count},
+        ).execute().data
         return data or _NO_RESULTS
     except Exception as e:
         return _db_error(e)
